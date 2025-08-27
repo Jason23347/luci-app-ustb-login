@@ -1,0 +1,7 @@
+#!/bin/sh
+CRON=/etc/crontabs/root
+LINE='* * * * * /usr/bin/ustb_login.lua >/dev/null 2>&1'
+grep -q "ustb_login.lua" "$CRON" || echo "$LINE" >> "$CRON"
+/etc/init.d/cron enable
+/etc/init.d/cron restart
+exit 0
