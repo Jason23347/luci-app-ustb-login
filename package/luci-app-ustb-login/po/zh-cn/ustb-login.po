@@ -1,0 +1,51 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-ustb-login\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+
+msgid "USTB Web Login"
+msgstr "北京科大校园网登录"
+
+msgid "Configure USTB web login."
+msgstr "配置北京科技大学校园网网页认证"
+
+msgid "Login Settings"
+msgstr "登录设置"
+
+msgid "Enable"
+msgstr "启用"
+
+msgid "Username"
+msgstr "用户名"
+
+msgid "Password"
+msgstr "密码"
+
+msgid "Login Host"
+msgstr "登录主机"
+
+msgid "Attempt IPv6"
+msgstr "尝试使用 IPv6"
+
+msgid "Default IPv6 Address"
+msgstr "默认 IPv6 地址"
+
+msgid "Detected IPv6"
+msgstr "检测到的 IPv6"
+
+msgid "Manual Login"
+msgstr "手动登录"
+
+msgid "Login now"
+msgstr "立即登录"
+
+msgid "Disabled"
+msgstr "已禁用"
+
+msgid "LuaSocket not available"
+msgstr "未安装 LuaSocket"
+
+msgid "Unavailable"
+msgstr "不可用"
