@@ -1,0 +1,7 @@
+config ustb_login 'main'
+    option enabled '1'
+    option username 'xuehao'
+    option password 'password'
+    option login_host 'http://202.204.48.66'
+    option attempt_ipv6 '1'
+    option default_ipv6_address ''
