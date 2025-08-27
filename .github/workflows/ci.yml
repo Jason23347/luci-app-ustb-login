@@ -14,79 +14,92 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        distro-version:
-          - immortalwrt-24.10.2
-          - immortalwrt-24.10.1
-          - immortalwrt-24.10.0
-          - openwrt-24.10.2
-          - openwrt-24.10.1
-          - openwrt-24.10.0
-        arch:
-          - aarch64
-          - x86_64
+        version:
+          - 24.10.2
+          - 24.10.1
+          - 24.10.0
+        target:
+          - x86
+          - armvirt
+        subtarget:
+          - 64
     env:
-      SDK_BASE_URL: https://downloads.openwrt.org
+      SDK_BASE_URL: https://downloads.immortalwrt.org/releases
       CONFIG_CCACHE: y
     steps:
-    - name: Checkout source
-      uses: actions/checkout@v2
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y ccache gettext libncurses5-dev xsltproc upx upx-ucl
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ccache gettext libncurses5-dev xsltproc upx upx-ucl zstd
 
-    - name: Prepare directories
-      run: |
-        mkdir -p $CACHE_DIR/sdk $CACHE_DIR/dl $CACHE_DIR/feeds
+      - name: Prepare directories
+        run: |
+          mkdir -p "$CACHE_DIR/sdk" "$CACHE_DIR/dl" "$CACHE_DIR/feeds"
 
-    - name: Download SDK
-      run: |
-        if [[ "${{ matrix.distro }}" == "openwrt" ]]; then
-          SDK_URL="$SDK_BASE_URL/releases/${{ matrix.distro-version }}/targets/${{ matrix.arch }}/sdk"
-        elif [[ "${{ matrix.distro }}" == "immortalwrt" ]]; then
-          SDK_URL="$SDK_BASE_URL/${{ matrix.distro-version }}/targets/${{ matrix.arch }}/sdk"
-        else
-          echo "::error::Unsupported distro: ${{ matrix.distro }}"
-          exit 1
-        fi
+      - name: Download SDK (ImmortalWrt)
+        run: |
+          set -euxo pipefail
+          VERSION="${{ matrix.version }}"
+          TARGET="${{ matrix.target }}"
+          SUBTARGET="${{ matrix.subtarget }}"
+          BASE="${SDK_BASE_URL}/${VERSION}/targets/${TARGET}/${SUBTARGET}"
 
-        SDK_FILE="$CACHE_DIR/sdk/sdk.tar.xz"
-        wget -O "$SDK_FILE" "$SDK_URL"
-        tar -xf "$SDK_FILE" -C "$CACHE_DIR/sdk" --strip-components=1
+          echo "Listing SDK at: $BASE"
+          SDK_TARBALL="$(curl -fsSL "$BASE/" | grep -oE 'immortalwrt-sdk-[^"]+\.(tar\.xz|tar\.zst)' | head -n1 || true)"
+          if [ -z "$SDK_TARBALL" ]; then
+            echo "::error::SDK tarball not found under $BASE"
+            exit 1
+          fi
+          echo "Found SDK: $SDK_TARBALL"
 
-    - name: Copy UPX to staging_dir
-      run: |
-        cp /usr/bin/upx $CACHE_DIR/sdk/staging_dir/host/bin/
-        cp /usr/bin/upx-ucl $CACHE_DIR/sdk/staging_dir/host/bin/
+          SDK_FILE="$CACHE_DIR/sdk.tar"
+          wget -O "$SDK_FILE" "$BASE/$SDK_TARBALL"
 
-    - name: Update feeds
-      run: |
-        cd $CACHE_DIR/sdk
-        ./scripts/feeds update -a
-        ./scripts/feeds install -a
-        cd -
+          rm -rf "$CACHE_DIR/sdk"/* || true
+          case "$SDK_TARBALL" in
+            *.tar.xz) tar -xJf "$SDK_FILE" -C "$CACHE_DIR/sdk" --strip-components=1 ;;
+            *.tar.zst) tar --zstd -xf "$SDK_FILE" -C "$CACHE_DIR/sdk" --strip-components=1 ;;
+            *) echo "::error::Unknown SDK compression format: $SDK_TARBALL"; exit 1 ;;
+          esac
 
-    - name: Copy package
-      run: |
-        cp -r $GITHUB_WORKSPACE/package/$PACKAGE_NAME $CACHE_DIR/sdk/package/
+      - name: Copy UPX to staging_dir
+        run: |
+          mkdir -p "$CACHE_DIR/sdk/staging_dir/host/bin"
+          cp /usr/bin/upx "$CACHE_DIR/sdk/staging_dir/host/bin/" || true
+          cp /usr/bin/upx-ucl "$CACHE_DIR/sdk/staging_dir/host/bin/" || true
 
-    - name: Compile package
-      run: |
-        cd $CACHE_DIR/sdk
-        make defconfig
-        make package/$PACKAGE_NAME/compile V=s
-        cd -
+      - name: Update feeds
+        run: |
+          set -eux
+          cd "$CACHE_DIR/sdk"
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
 
-    - name: Copy IPK and generate SHA256
-      run: |
-        find $CACHE_DIR/sdk/bin/ -name "${PACKAGE_NAME}*.ipk" -exec cp {} $GITHUB_WORKSPACE \;
-        sha256sum $GITHUB_WORKSPACE/${PACKAGE_NAME}*.ipk > $GITHUB_WORKSPACE/${PACKAGE_NAME}.sha256
+      - name: Copy package
+        run: |
+          set -eux
+          cp -r "$GITHUB_WORKSPACE/package/$PACKAGE_NAME" "$CACHE_DIR/sdk/package/"
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: $PACKAGE_NAME
-        path: |
-          $GITHUB_WORKSPACE/${PACKAGE_NAME}*.ipk
-          $GITHUB_WORKSPACE/${PACKAGE_NAME}.sha256
+      - name: Compile package
+        run: |
+          set -eux
+          cd "$CACHE_DIR/sdk"
+          make defconfig
+          make package/${PACKAGE_NAME}/compile V=s
+
+      - name: Copy IPK and generate SHA256
+        run: |
+          set -eux
+          find "$CACHE_DIR/sdk/bin/" -name "${PACKAGE_NAME}*.ipk" -exec cp {} "$GITHUB_WORKSPACE" \;
+          sha256sum "$GITHUB_WORKSPACE/${PACKAGE_NAME}"*.ipk > "$GITHUB_WORKSPACE/${PACKAGE_NAME}.sha256"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          path: |
+            ${{ github.workspace }}/${{ env.PACKAGE_NAME }}*.ipk
+            ${{ github.workspace }}/${{ env.PACKAGE_NAME }}.sha256
