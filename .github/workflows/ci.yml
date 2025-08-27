@@ -42,7 +42,15 @@ jobs:
 
     - name: Download SDK
       run: |
-        SDK_URL="$SDK_BASE_URL/releases/${{ matrix.distro-version }}/targets/${{ matrix.arch }}/sdk"
+        if [[ "${{ matrix.distro }}" == "openwrt" ]]; then
+          SDK_URL="$SDK_BASE_URL/releases/${{ matrix.distro-version }}/targets/${{ matrix.arch }}/sdk"
+        elif [[ "${{ matrix.distro }}" == "immortalwrt" ]]; then
+          SDK_URL="$SDK_BASE_URL/${{ matrix.distro-version }}/targets/${{ matrix.arch }}/sdk"
+        else
+          echo "::error::Unsupported distro: ${{ matrix.distro }}"
+          exit 1
+        fi
+
         SDK_FILE="$CACHE_DIR/sdk/sdk.tar.xz"
         wget -O "$SDK_FILE" "$SDK_URL"
         tar -xf "$SDK_FILE" -C "$CACHE_DIR/sdk" --strip-components=1
