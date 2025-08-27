@@ -102,7 +102,8 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.PACKAGE_NAME }}
+          name: ${{ env.PACKAGE_NAME }}-${{ matrix.version }}-${{ matrix.platform }}
           path: |
             ${{ github.workspace }}/${{ env.PACKAGE_NAME }}*.ipk
             ${{ github.workspace }}/${{ env.PACKAGE_NAME }}.sha256
+          if-no-files-found: error
