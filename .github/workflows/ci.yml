@@ -1,5 +1,4 @@
 name: Build luci-app-ustb-login
-
 on:
   push:
     tags:
@@ -18,11 +17,10 @@ jobs:
           - 24.10.2
           - 24.10.1
           - 24.10.0
-        target:
-          - x86
-          - armvirt
-        subtarget:
-          - 64
+        platform:
+          - x86_64
+          - armsr_armv8
+          - armsr_armv7
     env:
       SDK_BASE_URL: https://downloads.immortalwrt.org/releases
       CONFIG_CCACHE: y
@@ -43,11 +41,16 @@ jobs:
         run: |
           set -euxo pipefail
           VERSION="${{ matrix.version }}"
-          TARGET="${{ matrix.target }}"
-          SUBTARGET="${{ matrix.subtarget }}"
-          BASE="${SDK_BASE_URL}/${VERSION}/targets/${TARGET}/${SUBTARGET}"
+          case "${{ matrix.platform }}" in
+            x86_64) TARGET="x86";   SUBTARGET="64" ;;
+            armsr_armv8) TARGET="armsr"; SUBTARGET="armv8" ;;
+            armsr_armv7) TARGET="armsr"; SUBTARGET="armv7" ;;
+            *) echo "::error::Unknown platform: ${{ matrix.platform }}"; exit 1 ;;
+          esac
 
+          BASE="${SDK_BASE_URL}/${VERSION}/targets/${TARGET}/${SUBTARGET}"
           echo "Listing SDK at: $BASE"
+
           SDK_TARBALL="$(curl -fsSL "$BASE/" | grep -oE 'immortalwrt-sdk-[^"]+\.(tar\.xz|tar\.zst)' | head -n1 || true)"
           if [ -z "$SDK_TARBALL" ]; then
             echo "::error::SDK tarball not found under $BASE"

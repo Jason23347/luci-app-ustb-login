@@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
 LUCI_TITLE:=USTB Web Login
 LUCI_DEPENDS:=+lua +luci-compat +luci-base +luci-lib-nixio
 PKG_LICENSE:=GPL-3.0
-PKG_VERSION:=1.0.0-rc5
+PKG_VERSION:=1.0.0-rc6
 PKG_MAINTAINER:=Shuaicheng Zhu <jason23347@gmail.com>
 
 include $(TOPDIR)/feeds/luci/luci.mk
