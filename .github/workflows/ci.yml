@@ -1,0 +1,84 @@
+name: Build luci-app-ustb-login
+
+on:
+  push:
+    tags:
+      - '*'
+
+env:
+  PACKAGE_NAME: luci-app-ustb-login
+  CACHE_DIR: ~/cache
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        distro-version:
+          - immortalwrt-24.10.2
+          - immortalwrt-24.10.1
+          - immortalwrt-24.10.0
+          - openwrt-24.10.2
+          - openwrt-24.10.1
+          - openwrt-24.10.0
+        arch:
+          - aarch64
+          - x86_64
+    env:
+      SDK_BASE_URL: https://downloads.openwrt.org
+      CONFIG_CCACHE: y
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v2
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ccache gettext libncurses5-dev xsltproc upx upx-ucl
+
+    - name: Prepare directories
+      run: |
+        mkdir -p $CACHE_DIR/sdk $CACHE_DIR/dl $CACHE_DIR/feeds
+
+    - name: Download SDK
+      run: |
+        SDK_URL="$SDK_BASE_URL/releases/${{ matrix.distro-version }}/targets/${{ matrix.arch }}/sdk"
+        SDK_FILE="$CACHE_DIR/sdk/sdk.tar.xz"
+        wget -O "$SDK_FILE" "$SDK_URL"
+        tar -xf "$SDK_FILE" -C "$CACHE_DIR/sdk" --strip-components=1
+
+    - name: Copy UPX to staging_dir
+      run: |
+        cp /usr/bin/upx $CACHE_DIR/sdk/staging_dir/host/bin/
+        cp /usr/bin/upx-ucl $CACHE_DIR/sdk/staging_dir/host/bin/
+
+    - name: Update feeds
+      run: |
+        cd $CACHE_DIR/sdk
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+        cd -
+
+    - name: Copy package
+      run: |
+        cp -r $GITHUB_WORKSPACE/package/$PACKAGE_NAME $CACHE_DIR/sdk/package/
+
+    - name: Compile package
+      run: |
+        cd $CACHE_DIR/sdk
+        make defconfig
+        make package/$PACKAGE_NAME/compile V=s
+        cd -
+
+    - name: Copy IPK and generate SHA256
+      run: |
+        find $CACHE_DIR/sdk/bin/ -name "${PACKAGE_NAME}*.ipk" -exec cp {} $GITHUB_WORKSPACE \;
+        sha256sum $GITHUB_WORKSPACE/${PACKAGE_NAME}*.ipk > $GITHUB_WORKSPACE/${PACKAGE_NAME}.sha256
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: $PACKAGE_NAME
+        path: |
+          $GITHUB_WORKSPACE/${PACKAGE_NAME}*.ipk
+          $GITHUB_WORKSPACE/${PACKAGE_NAME}.sha256
