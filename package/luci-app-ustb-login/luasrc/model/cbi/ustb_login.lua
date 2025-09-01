@@ -1,12 +1,6 @@
 local sys = require "luci.sys"
+local util = require "luci.util"
 local uci = require "luci.model.uci".cursor()
-
--- 原生 HTTP 请求（LuaSocket）
-local has_http, http = pcall(require, "socket.http")
-local has_ltn12, ltn12 = pcall(require, "ltn12")
-if has_http then
-  http.TIMEOUT = 3
-end
 
 local m = Map("ustb_login", translate("USTB Web Login"),
     translate("Configure USTB web login."))
@@ -38,21 +32,12 @@ do
       return def
     end
 
-    if not (has_http and has_ltn12) then
-      return translate("LuaSocket not available")
-    end
-
-    local resp = {}
-    local ok, code = http.request{
-      url  = "http://cippv6.ustb.edu.cn/get_ip.php",
-      sink = ltn12.sink.table(resp)
-    }
-
-    if not ok or (type(code) == "number" and code ~= 200) then
+    -- 调用 uclient-fetch 获取内容
+    local body = util.trim(util.exec("uclient-fetch -qO- http://cippv6.ustb.edu.cn/get_ip.php 2>/dev/null"))
+    if body == "" then
       return translate("Unavailable")
     end
 
-    local body = table.concat(resp)
     local ip = body:match("gIpV6Addr%s*=%s*'([^']+)'") or ""
     return (ip ~= "" and ip) or translate("Unavailable")
   end
