@@ -46,7 +46,7 @@ do
 			return def
 		end
 
-		local body = util.trim(util.exec("uclient-fetch -qO- http://cippv6.ustb.edu.cn/get_ip.php 2>/dev/null"))
+		local body = util.trim(util.exec("uclient-fetch -T 1 -qO- http://cippv6.ustb.edu.cn/get_ip.php 2>/dev/null"))
 		if body == "" then
 			return translate("Unavailable")
 		end
