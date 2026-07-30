@@ -66,6 +66,86 @@ do
 	end
 end
 
+-- 当前登录账号信息（余额 / 流量）
+do
+	local FREE_QUOTA_GB = 120
+	local PRICE_PER_GB = 0.6120
+	local KB_PER_GB = 1024 * 1024
+
+	local function kb_to_gb(kb)
+		return (tonumber(kb) or 0) / KB_PER_GB
+	end
+
+	local function format_ipv4_flow(flow_kb)
+		local used_gb = kb_to_gb(flow_kb)
+		local pct = math.min(math.floor(used_gb * 100 / FREE_QUOTA_GB + 0.5), 100)
+		local title
+		if used_gb < FREE_QUOTA_GB then
+			title = string.format("%.2f / %d GB (%.0f%%)", used_gb, FREE_QUOTA_GB, pct)
+		else
+			local excess_gb = used_gb - FREE_QUOTA_GB
+			local cost = excess_gb * PRICE_PER_GB
+			title = string.format("%d / %d GB，已超出 %.2f GB (%.2f 元)",
+				FREE_QUOTA_GB, FREE_QUOTA_GB, excess_gb, cost)
+		end
+		return string.format(
+			'<div class="cbi-progressbar" title="%s"><div style="width:%d%%"></div></div>',
+			util.pcdata(title), pct)
+	end
+
+	local function fetch_session()
+		local login_host = uci:get("ustb_login", "main", "login_host") or ""
+		if login_host == "" then
+			return { err = translate("Unavailable") }
+		end
+
+		local body = util.trim(util.exec(string.format(
+			"uclient-fetch -T 1 -qO- '%s' 2>/dev/null",
+			login_host:gsub("'", "'\\''"))))
+		if body == "" then
+			return { err = translate("Unavailable") }
+		end
+
+		if not body:find("flow=", 1, true) then
+			return { err = translate("Login required") }
+		end
+
+		local flow = tonumber(body:match("flow%s*=%s*'%s*(%d+)%s*'")) or 0
+		local fee = tonumber(body:match("fee%s*=%s*'%s*(%d+)%s*'")) or 0
+		local v46m = tonumber(body:match("v46m%s*=%s*(%d+)")) or 0
+		local v6df = tonumber(body:match("v6df%s*=%s*(%d+)")) or 0
+		local v4_only = not (v46m == 4 or v46m == 12)
+
+		return {
+			balance = string.format("%.2f 元", fee / 10000),
+			flow_v4 = format_ipv4_flow(flow),
+			flow_v6 = v4_only
+				and translate("IPV6 not found")
+				or string.format("%.2f GB", kb_to_gb(v6df / 4)),
+		}
+	end
+
+	local session = fetch_session()
+
+	local info = m:section(SimpleSection, translate("Account Status"))
+
+	local bal = info:option(DummyValue, "_balance", translate("Balance"))
+	function bal.cfgvalue()
+		return session.err or session.balance
+	end
+
+	local fv4 = info:option(DummyValue, "_flow_v4", translate("IPv4 Flow"))
+	fv4.rawhtml = true
+	function fv4.cfgvalue()
+		return session.err or session.flow_v4
+	end
+
+	local fv6 = info:option(DummyValue, "_flow_v6", translate("IPv6 Flow"))
+	function fv6.cfgvalue()
+		return session.err or session.flow_v6
+	end
+end
+
 -- 多账号管理
 local a = m:section(TypedSection, "account", translate("Accounts"),
     translate("Add multiple accounts and select one as default above."))

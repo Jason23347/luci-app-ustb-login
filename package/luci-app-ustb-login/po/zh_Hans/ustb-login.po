@@ -64,3 +64,21 @@ msgstr "未安装 LuaSocket"
 
 msgid "Unavailable"
 msgstr "不可用"
+
+msgid "Account Status"
+msgstr "当前登录信息"
+
+msgid "Balance"
+msgstr "余额"
+
+msgid "IPv4 Flow"
+msgstr "IPv4 流量"
+
+msgid "IPv6 Flow"
+msgstr "IPv6 流量"
+
+msgid "Login required"
+msgstr "需要登录"
+
+msgid "IPV6 not found"
+msgstr "未检测到 IPv6"
