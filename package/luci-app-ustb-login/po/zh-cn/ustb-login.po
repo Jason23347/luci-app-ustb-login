@@ -17,6 +17,21 @@ msgstr "登录设置"
 msgid "Enable"
 msgstr "启用"
 
+msgid "Default Account"
+msgstr "默认账号"
+
+msgid "-- Please choose --"
+msgstr "-- 请选择 --"
+
+msgid "Accounts"
+msgstr "账号列表"
+
+msgid "Add multiple accounts and select one as default above."
+msgstr "可添加多组账号，并在上方选择默认用于登录的账号。"
+
+msgid "Remark"
+msgstr "备注"
+
 msgid "Username"
 msgstr "用户名"
 

@@ -1,0 +1,22 @@
+#!/bin/sh
+# 将旧版单账号凭据迁移到 account section
+
+[ -f /etc/config/ustb_login ] || exit 0
+
+has_account=0
+uci -q show ustb_login | grep -q "=account$" && has_account=1
+
+username=$(uci -q get ustb_login.main.username)
+password=$(uci -q get ustb_login.main.password)
+
+if [ "$has_account" -eq 0 ] && [ -n "$username" ]; then
+	sid=$(uci add ustb_login account)
+	uci set "ustb_login.$sid.username=$username"
+	uci set "ustb_login.$sid.password=$password"
+	uci set "ustb_login.main.default_account=$sid"
+	uci -q delete ustb_login.main.username
+	uci -q delete ustb_login.main.password
+	uci commit ustb_login
+fi
+
+exit 0
